@@ -1,4 +1,4 @@
-# Theseus Rover (APE – Autonomous Planetary Explorer)
+# Theseus Rover
 
 Low-cost, open-source rover platform for education, research, and DIY robotics.
 
