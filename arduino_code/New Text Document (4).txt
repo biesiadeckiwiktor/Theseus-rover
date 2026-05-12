@@ -1,0 +1,68 @@
+#include "Arduino.h"
+#include "diffSteer.h"
+#include <math.h>
+
+diffSteer::diffSteer(float wheelBase, float trackWidth_f, float trackWidth_m, float trackWidth_r)
+{
+  _wheelBase = wheelBase;
+  _trackWidth_f = trackWidth_f;
+  _trackWidth_m = trackWidth_m;
+  _trackWidth_r = trackWidth_r;
+}
+
+void diffSteer::calcSpeed(float speed, float angle, int &fl, int &fr, int &ml, int &mr, int &rl, int &rr)
+{
+  if (abs(angle - 90.0) < 1.0)
+  {
+    fl = fr = ml = mr = rl = rr = (int)speed;
+    return;
+  }
+
+  angle = constrain(angle, 30, 150);
+
+  float delta = radians(angle - 90.0);  
+  float tanDelta = tan(delta);
+
+  float R = _wheelBase / tanDelta;
+
+  float r_fl = sqrt(pow(R + _trackWidth_f / 2.0f, 2) + pow(_wheelBase / 2.0f, 2));
+  float r_fr = sqrt(pow(R - _trackWidth_f / 2.0f, 2) + pow(_wheelBase / 2.0f, 2));
+  float r_ml = sqrt(pow(R + _trackWidth_m / 2.0f, 2) + pow(17.0f , 2));  
+  float r_mr = sqrt(pow(R - _trackWidth_m / 2.0f, 2) + pow(17.0f , 2));
+  float r_rl = sqrt(pow(R + _trackWidth_r / 2.0f, 2) + pow(_wheelBase / 2.0f, 2));
+  float r_rr = sqrt(pow(R - _trackWidth_r / 2.0f, 2) + pow(_wheelBase / 2.0f, 2));
+
+
+  float r_max = max(r_fl, max(r_fr, max(r_ml, max(r_mr, max(r_rl, r_rr)))));
+
+  fl = (int)constrain(speed * r_fl / abs(R), 0, 255);
+  fr = (int)constrain(speed * r_fr / abs(R), 0, 255);
+  ml = (int)constrain(speed * r_ml / abs(R), 0, 255);
+  mr = (int)constrain(speed * r_mr / abs(R), 0, 255);
+  rl = (int)constrain(speed * r_rl / abs(R), 0, 255);
+  rr = (int)constrain(speed * r_rr / abs(R), 0, 255);
+}
+
+void diffSteer::calcSteerAngle(float angle, int &s_fl, int &s_fr, int &s_rl, int &s_rr)
+{
+  if (abs(angle - 90.0) < 1.0)
+  {
+    s_fl = s_fr = s_rl = s_rr = 0;
+    return;
+  }
+
+  angle = constrain(angle, 30, 150);
+
+  float delta    = radians(angle - 90.0); 
+  float tanDelta = tan(delta);
+
+  float deltaL = atan(_wheelBase * tanDelta / (_wheelBase + 0.5f * _trackWidth_f * tanDelta));
+  float deltaR = atan(_wheelBase * tanDelta / (_wheelBase - 0.5f * _trackWidth_f * tanDelta));
+  float deltaRL = atan(_wheelBase * tanDelta / (_wheelBase + 0.5f * _trackWidth_r * tanDelta));
+  float deltaRR = atan(_wheelBase * tanDelta / (_wheelBase - 0.5f * _trackWidth_r * tanDelta));
+
+  s_fl = (int)degrees(deltaL);
+  s_fr = (int)degrees(deltaR);
+  s_rl = -(int)degrees(deltaRL);   
+  s_rr = -(int)degrees(deltaRR);
+}
