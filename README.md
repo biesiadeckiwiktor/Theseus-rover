@@ -12,7 +12,7 @@ Rover canm be assembled in 4WS or 6WS steering configuration using all the same 
 
 <img width="240" height="240" alt="rover_spin2" src="https://github.com/user-attachments/assets/3c71be6e-8ea9-4a64-800e-988696c8608a" />
 <br><br>
-<img width="425" height="277" alt="image" src="https://github.com/user-attachments/assets/82ff3e5f-f62b-40a2-8775-d7363cfc0ce5" />
+<img width="483" height="330" alt="image" src="https://github.com/user-attachments/assets/82ff3e5f-f62b-40a2-8775-d7363cfc0ce5" />
 <img width="483" height="330" alt="image" src="https://github.com/user-attachments/assets/06fb2d2c-030d-4de1-abe1-fd27ae40f261" />
 
 </div>
