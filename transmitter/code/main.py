@@ -1,17 +1,12 @@
-from machine import Pin, I2C, ADC
+from machine import Pin, I2C, ADC, UART
 from DIYables_MicroPython_LCD_I2C import LCD_I2C
 import time
 import ads1x15
-import utime
-import network
-import socket
 import struct
 
-SSID = "theseus"
-PASSWORD = "12345678"
-
-IP = "192.168.4.1"
-PORT = 5005
+# ---- COMMUNICATION MODE ----
+USE_WIFI = False  # True = WiFi, False = HC-12
+# ----------------------------
 
 START = 0xAA
 END = 0x55
@@ -33,6 +28,19 @@ yellow_1 = Pin(19, Pin.OUT)
 yellow_2 = Pin(20, Pin.OUT)
 green = Pin(21, Pin.OUT)
 
+if USE_WIFI:
+    import network
+    import socket
+    SSID = "theseus"
+    PASSWORD = "12345678"
+    IP = "###.###.#.#" #replace
+    PORT = 5005
+    wifi = network.WLAN(network.STA_IF)
+    wifi.active(True)
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+else:
+    hc12 = UART(0, baudrate=9600, tx=Pin(16), rx=Pin(17))
+
 time.sleep(2)
 
 lcd.print("Hello :)")
@@ -41,11 +49,6 @@ red(1)
 yellow_1(1)
 yellow_2(1)
 green(1)
-
-wifi = network.WLAN(network.STA_IF)
-wifi.active(True)
-
-sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
 row_pins = [Pin(p, Pin.IN, Pin.PULL_DOWN) for p in (6,7,8,9)]
 col_pins = [Pin(p, Pin.OUT) for p in (10,11,12,13)]
@@ -89,15 +92,19 @@ def read_voltage(adc, ch):
     raw = adc.read(4, ch)
     return adc.raw_to_v(raw)
 
+def voltage_to_byte(v):
+    v = max(0, min(3.3, v))
+    return int(v / 3.3 * 255)
+
+def map_value(x, in_min, in_max, out_min, out_max):
+    return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min
+
 def connect_wifi():
     if wifi.isconnected():
         return True
     print("Connecting wifi...")
     lcd.clear()
-    lcd.print("Connecting")
-    lcd.set_cursor(0, 1)
-    lcd.print("wifi...")
-    lcd.set_cursor(0, 0)
+    lcd.print("Connecting wifi...")
     try:
         wifi.disconnect()
     except:
@@ -106,34 +113,16 @@ def connect_wifi():
     wifi.connect(SSID, PASSWORD)
     timeout = 20
     while not wifi.isconnected() and timeout > 0:
-        print("Waiting for connection...")
-        lcd.clear()
-        lcd.print("Waiting for")
-        lcd.set_cursor(0, 1)
-        lcd.print("connection...")
-        lcd.set_cursor(0, 0)
         time.sleep(1)
         timeout -= 1
     if wifi.isconnected():
-        print("Connected:", wifi.ifconfig())
         lcd.clear()
         lcd.print("Connected")
         return True
     else:
-        print("Connection failed")
         lcd.clear()
-        lcd.print("Connection")
-        lcd.set_cursor(0, 1)
-        lcd.print("failed")
-        lcd.set_cursor(0, 0)
+        lcd.print("Failed")
         return False
-
-def voltage_to_byte(v):
-    v = max(0, min(3.3, v))
-    return int(v / 3.3 * 255)
-
-while not connect_wifi():
-    time.sleep(2)
 
 def rssi_to_bars(rssi):
     if rssi >= -50: return 8
@@ -145,59 +134,14 @@ def rssi_to_bars(rssi):
     elif rssi >= -80: return 2
     else: return 1
 
-def show_signal(rssi):
-    lcd.clear()
-    bars = rssi_to_bars(rssi)
-    lcd.set_cursor(0, 0)
-    lcd.print("{:4d}dB".format(rssi))
-    for i in range(8):
-        lcd.set_cursor(8 + i, 0)
-        lcd.print(chr(signal_top[bars - 1][i]))
-    for i in range(8):
-        lcd.set_cursor(8 + i, 1)
-        lcd.print(chr(signal_bot[bars - 1][i]))
+if USE_WIFI:
+    while not connect_wifi():
+        time.sleep(2)
 
-signal = 0
 last_key = None
 
-p0 = [0b00000]*8
-p20 = [0,0,0,0,0,0,0b11111,0b11111]
-p40 = [0,0,0,0,0b11111,0b11111,0b11111,0b11111]
-p60 = [0,0,0b11111,0b11111,0b11111,0b11111,0b11111,0b11111]
-p80 = [0b11111]*8
-
-lcd.custom_char(0, p0)
-lcd.custom_char(1, p20)
-lcd.custom_char(2, p40)
-lcd.custom_char(3, p60)
-lcd.custom_char(4, p80)
-
-signal_bot = [
-    [1,0,0,0,0,0,0,0],
-    [1,2,0,0,0,0,0,0],
-    [1,2,3,0,0,0,0,0],
-    [1,2,3,4,0,0,0,0],
-    [1,2,3,4,4,0,0,0],
-    [1,2,3,4,4,4,0,0],
-    [1,2,3,4,4,4,4,0],
-    [1,2,3,4,4,4,4,4],
-]
-
-signal_top = [
-    [0,0,0,0,0,0,0,0],
-    [0,0,0,0,0,0,0,0],
-    [0,0,0,0,0,0,0,0],
-    [0,0,0,0,0,0,0,0],
-    [0,0,0,0,1,0,0,0],
-    [0,0,0,0,1,2,0,0],
-    [0,0,0,0,1,2,3,0],
-    [0,0,0,0,1,2,3,4],
-]
-
-def map_value(x, in_min, in_max, out_min, out_max):
-    return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min
-
 while True:
+
     adc_value = adc.read_u16() >> 4
     voltage = map_value(adc_value, 0, 4095, 0, 3.3)
 
@@ -210,7 +154,7 @@ while True:
     else:
         red.on(); yellow_1.off(); yellow_2.off(); green.off()
 
-    if not wifi.isconnected():
+    if USE_WIFI and not wifi.isconnected():
         lcd.clear()
         lcd.print("Signal lost")
         while not connect_wifi():
@@ -232,6 +176,7 @@ while True:
     j2a2 = voltage_to_byte(v5)
 
     buttons = 0
+
     key = scan_keypad()
     if key and key != last_key:
         print("Pressed:", key)
@@ -250,18 +195,22 @@ while True:
 
     packet = struct.pack(
         "BBBBBBBBBBB",
-        START, j1a0, j1a1, j1a2,
+        START,
+        j1a0, j1a1, j1a2,
         j2a0, j2a1, j2a2,
         btn_low, btn_mid, btn_high,
         END
     )
 
-    try:
-        sock.sendto(packet, (IP, PORT))
-    except:
-        pass
-
-    rssi = wifi.status('rssi')
-    show_signal(rssi)
+    if USE_WIFI:
+        try:
+            sock.sendto(packet, (IP, PORT))
+        except:
+            pass
+        rssi = wifi.status('rssi')
+        # show_signal(rssi)  # re-enable if needed
+    else:
+        hc12.write(packet)
+        print("Sent:", packet)
 
     time.sleep(0.1)
