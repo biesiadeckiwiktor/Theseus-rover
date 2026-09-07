@@ -134,6 +134,55 @@ def rssi_to_bars(rssi):
     elif rssi >= -80: return 2
     else: return 1
 
+def show_signal(rssi):
+    lcd.clear()
+    bars = rssi_to_bars(rssi)
+    lcd.set_cursor(0, 0)
+    lcd.print("{:4d}dB".format(rssi))
+    for i in range(8):
+        lcd.set_cursor(8 + i, 0)
+        lcd.print(chr(signal_top[bars - 1][i]))
+    for i in range(8):
+        lcd.set_cursor(8 + i, 1)
+        lcd.print(chr(signal_bot[bars - 1][i]))
+
+signal = 0
+last_key = None
+
+p0 = [0b00000]*8
+p20 = [0,0,0,0,0,0,0b11111,0b11111]
+p40 = [0,0,0,0,0b11111,0b11111,0b11111,0b11111]
+p60 = [0,0,0b11111,0b11111,0b11111,0b11111,0b11111,0b11111]
+p80 = [0b11111]*8
+
+lcd.custom_char(0, p0)
+lcd.custom_char(1, p20)
+lcd.custom_char(2, p40)
+lcd.custom_char(3, p60)
+lcd.custom_char(4, p80)
+
+signal_bot = [
+    [1,0,0,0,0,0,0,0],
+    [1,2,0,0,0,0,0,0],
+    [1,2,3,0,0,0,0,0],
+    [1,2,3,4,0,0,0,0],
+    [1,2,3,4,4,0,0,0],
+    [1,2,3,4,4,4,0,0],
+    [1,2,3,4,4,4,4,0],
+    [1,2,3,4,4,4,4,4],
+]
+
+signal_top = [
+    [0,0,0,0,0,0,0,0],
+    [0,0,0,0,0,0,0,0],
+    [0,0,0,0,0,0,0,0],
+    [0,0,0,0,0,0,0,0],
+    [0,0,0,0,1,0,0,0],
+    [0,0,0,0,1,2,0,0],
+    [0,0,0,0,1,2,3,0],
+    [0,0,0,0,1,2,3,4],
+]
+
 if USE_WIFI:
     while not connect_wifi():
         time.sleep(2)
